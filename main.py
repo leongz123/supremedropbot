@@ -17,18 +17,27 @@ class Container:
 
 class Application:
 	def __init__(self, master):
+        # Create a UI builder
 		self.builder = builder = pygubu.Builder()
-		builder.add_from_file('bin\\gui.ui')
-		self.mainwindow = builder.get_object('mainwindow', master)
+		#Load a UI file
+        builder.add_from_file('bin\\gui.ui')
+		#Create the widget using a master as parent
+        self.mainwindow = builder.get_object('mainwindow', master)
 		self.console = builder.get_object('console')
 		self.productlist = builder.get_object('listbox_products')
+        #Connect Callbacks
 		builder.connect_callbacks(self)
 		self.container = Container()
 		self.builder.import_variables(self.container)
 		self.load_paymentdata()
 
 	def add_productdata(self):
-		self.productlist.insert(tk.END, [self.container.productname.get(),self.container.productcolour.get(),self.container.productsize.get(),self.container.productcategory.get()])
+        #tk.END: a string consisting of a line number directly followed by the text ".end"
+        #A line end index correspond to the newline character ending a line.
+        #product list (name, color, size, category)
+		self.productlist.insert(tk.END, [self.container.productname.get(),
+            self.container.productcolour.get(),self.container.productsize.get(),
+            self.container.productcategory.get()])
 
 	def remove_productdata(self):
 		index = int(self.productlist.curselection()[0])
@@ -110,29 +119,39 @@ class Application:
 		items = 0
 		if (self.productlist.size() < 1):
 			return
+        #search all products
 		for product in self.productlist.get(0, self.productlist.size()):
 			found_flag = False
 			self.console_print("Searching for "+product[0])
 			try:
+                #sending the request for desire category 
 				req = requests.get(mainUrl + product[3]).text
 				soup = BeautifulSoup(req, 'html.parser')
+                #parsing the items by each loop. If the product is in the a.name , then raise the name_flag
 				for div in soup.find_all('div', 'turbolink_scroller'):
 					name_flag = False
+                    #find all the a link in this category page. Find the product using For loop
 					for a in div.find_all('a', href=True, text=True):
 						print(a.text)
 						if product[0] in a.text:
 							name_flag = True
+                        #if name and colour are available, add the link
+                        #Broser visit the product link
 						if name_flag and product[1] in a.text:
 							productUrl = baseUrl + a['href']
 							self.console_print("Found "+product[0])
 							self.browser.visit(productUrl)
 							try:
+                                #find_option_by_text: find <option> elements by their text and return an istance of ElementList
 								self.browser.find_option_by_text(product[2]).first.click()
+                                #find the add to cart button name called "commit" and click
 								self.browser.find_by_name('commit').click()
+                                #output the select status
 								self.console_print("Added "+product[0]+" size "+product[2]+" to cart")
 								items = items + 1
 								time.sleep(0.1)
 							except Exception:
+                                #return error if we cannot add this product
 								self.console_print('Error whilst adding specified '+product[0]+' size to cart.')
 							break
 			except Exception:
@@ -171,7 +190,7 @@ def main():
 	app = Application(root)
 	root.wm_title("Supreme Drop Bot")
 	root.wm_resizable(0,0)
-	root.wm_iconbitmap("bin\\favicon.ico")
+	# root.wm_iconbitmap("bin\\favicon.ico")
 	root.mainloop()
 
 if __name__ == '__main__':
